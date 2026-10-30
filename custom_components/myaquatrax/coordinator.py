@@ -123,4 +123,5 @@ class AquaTraxCoordinator(DataUpdateCoordinator[AquaTraxData]):
         except AuthenticationError as exc:
             raise UpdateFailed(f"Authentication failed: {exc}") from exc
         except Exception as exc:
+            _LOGGER.exception("Unexpected error fetching MyAquaTrax data")
             raise UpdateFailed(f"Error fetching data: {exc}") from exc

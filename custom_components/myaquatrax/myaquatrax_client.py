@@ -56,11 +56,24 @@ class UsageReading:
 
     usage_date: str
     hourly: str | None
-    total_value: float
-    average: float
-    highest: float
-    lowest: float
-    current_usage: float
+    total_value: float | None
+    average: float | None
+    highest: float | None
+    lowest: float | None
+    current_usage: float | None
+
+
+def to_float(value: Any) -> float | None:
+    """Convert an API value to float, returning None for null/blank/invalid values."""
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    try:
+        cleaned = str(value).strip().replace(",", "").replace("$", "")
+        return float(cleaned) if cleaned else None
+    except ValueError:
+        return None
 
 
 class AquaTraxClient:
@@ -451,17 +464,22 @@ class AquaTraxClient:
     def _parse_usage_table(data: dict[str, Any]) -> list[UsageReading]:
         """Parse the usage Table from a GetWaterUsage response."""
         readings: list[UsageReading] = []
-        table = data.get("Results", {}).get("Table", [])
+        results = data.get("Results") if isinstance(data, dict) else None
+        table = results.get("Table") if isinstance(results, dict) else None
+        if not isinstance(table, list):
+            return readings
         for row in table:
+            if not isinstance(row, dict):
+                continue
             readings.append(
                 UsageReading(
                     usage_date=row.get("UsageDate", ""),
                     hourly=row.get("Hourly"),
-                    total_value=float(row.get("TotalValue", 0)),
-                    average=float(row.get("AVERAGE", 0)),
-                    highest=float(row.get("HIGHEST", 0)),
-                    lowest=float(row.get("LOWEST", 0)),
-                    current_usage=float(row.get("CurrentUsage", 0)),
+                    total_value=to_float(row.get("TotalValue")),
+                    average=to_float(row.get("AVERAGE")),
+                    highest=to_float(row.get("HIGHEST")),
+                    lowest=to_float(row.get("LOWEST")),
+                    current_usage=to_float(row.get("CurrentUsage")),
                 )
             )
         return readings

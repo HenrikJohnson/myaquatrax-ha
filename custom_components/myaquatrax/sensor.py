@@ -23,6 +23,7 @@ from .const import (
     USAGE_TYPE_GALLONS,
 )
 from .coordinator import AquaTraxCoordinator
+from .myaquatrax_client import to_float
 
 
 type AquaTraxConfigEntry = ConfigEntry[AquaTraxCoordinator]
@@ -214,29 +215,31 @@ class AquaTraxSensorEntity(CoordinatorEntity[AquaTraxCoordinator], SensorEntity)
             row = _get_current_month_compare(compare_data, table_name)
             if not row:
                 return None
-            return float(row.get("Consumed", 0))
+            return to_float(row.get("Consumed"))
 
         # Standard usage sensors
         readings = self.coordinator.data.get(data_key, [])
         if not readings:
             return None
 
-        latest = readings[-1]
+        field = {
+            "billing_period_total": "current_usage",
+            "billing_period_cost": "current_usage",
+            "daily_usage": "total_value",
+            "daily_cost": "total_value",
+            "average": "average",
+            "highest": "highest",
+            "lowest": "lowest",
+        }.get(rkey)
+        if field is None:
+            return None
 
-        if rkey == "billing_period_total":
-            return latest.current_usage
-        if rkey == "daily_usage":
-            return latest.total_value
-        if rkey == "average":
-            return latest.average
-        if rkey == "highest":
-            return latest.highest
-        if rkey == "lowest":
-            return latest.lowest
-        if rkey == "billing_period_cost":
-            return latest.current_usage
-        if rkey == "daily_cost":
-            return latest.total_value
+        # The most recent day is often not yet reported (null), so use the
+        # latest reading that actually has a value.
+        for reading in reversed(readings):
+            value = getattr(reading, field)
+            if value is not None:
+                return value
 
         return None
 
