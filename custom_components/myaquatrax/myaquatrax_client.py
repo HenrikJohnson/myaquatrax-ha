@@ -95,7 +95,11 @@ class AquaTraxClient:
         url = f"{BASE_URL}/common/GetMasterUtilityList"
         resp = self._session.post(url, data={}, timeout=30)
         resp.raise_for_status()
-        payload = resp.json()
+        # Response is sometimes a JSON string wrapping another JSON object
+        text = resp.text.strip()
+        if text.startswith('"') and text.endswith('"'):
+            text = json.loads(text)
+        payload = json.loads(text)
         table = payload.get("Results", {}).get("Table", [])
         utilities: list[Utility] = []
         for row in table:
