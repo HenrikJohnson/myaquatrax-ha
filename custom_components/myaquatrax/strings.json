@@ -1,0 +1,40 @@
+{
+  "title": "MyAquaTrax",
+  "config": {
+    "step": {
+      "user": {
+        "title": "MyAquaTrax Setup",
+        "description": "Select your water utility.",
+        "data": {
+          "utility_choice": "Water Utility"
+        }
+      },
+      "credentials": {
+        "title": "MyAquaTrax Credentials",
+        "description": "Enter your login credentials.",
+        "data": {
+          "account_number": "Account Number",
+          "email": "Email Address",
+          "street_number": "Street Number",
+          "password": "Password"
+        }
+      },
+      "meter": {
+        "title": "Select Meter",
+        "description": "Select the water meter to monitor.",
+        "data": {
+          "meter_choice": "Water Meter"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Account is already configured",
+      "cannot_connect": "Failed to connect to MyAquaTrax."
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "domain": "myaquatrax",
+  "name": "MyAquaTrax",
+  "codeowners": ["@henrik"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/HenrikJohnson/myaquatrax-ha",
+  "integration_type": "device",
+  "iot_class": "cloud_polling",
+  "requirements": ["requests>=2.31.0"],
+  "version": "0.1.0"
+}
