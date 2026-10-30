@@ -129,6 +129,13 @@ SENSOR_DESCRIPTIONS = _build_descriptions()
 
 
 def _get_unit(key: str) -> str:
+    # Flow rate sensors need flow-rate units
+    if "flow_" in key:
+        if key.startswith(USAGE_TYPE_GALLONS):
+            return "gal/h"
+        if key.startswith(USAGE_TYPE_CCF):
+            return "hcf/h"
+        return "gal/h"
     if key.startswith(USAGE_TYPE_GALLONS) or key.startswith("compare_"):
         return UnitOfVolume.GALLONS
     if key.startswith(USAGE_TYPE_CCF):
