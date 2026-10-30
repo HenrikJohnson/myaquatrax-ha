@@ -69,41 +69,66 @@ class AquaTraxCoordinator(DataUpdateCoordinator[AquaTraxData]):
                 )
 
             end = datetime.now()
-            start = end - timedelta(days=7)
-            from_date = start.strftime("%m/%d/%Y")
-            to_date = end.strftime("%m/%d/%Y")
+            daily_start = end - timedelta(days=7)
+            hourly_start = end - timedelta(hours=24)
+            daily_from = daily_start.strftime("%m/%d/%Y")
+            daily_to = end.strftime("%m/%d/%Y")
+            hourly_from = hourly_start.strftime("%m/%d/%Y")
+            hourly_to = end.strftime("%m/%d/%Y")
 
-            # Fetch usage in Gallons
-            raw_gallons = await self.hass.async_add_executor_job(
+            # Fetch daily usage in Gallons (last 7 days)
+            raw_gallons_daily = await self.hass.async_add_executor_job(
                 self._client.get_water_usage,
                 self._account_number,
                 self._meter_number,
                 "D",
                 USAGE_TYPE_GALLONS,
-                from_date,
-                to_date,
+                daily_from,
+                daily_to,
             )
 
-            # Fetch usage in CCF/HCF
-            raw_ccf = await self.hass.async_add_executor_job(
+            # Fetch daily usage in CCF/HCF (last 7 days)
+            raw_ccf_daily = await self.hass.async_add_executor_job(
                 self._client.get_water_usage,
                 self._account_number,
                 self._meter_number,
                 "D",
                 USAGE_TYPE_CCF,
-                from_date,
-                to_date,
+                daily_from,
+                daily_to,
             )
 
-            # Fetch cost in Dollars
-            raw_cost = await self.hass.async_add_executor_job(
+            # Fetch daily cost in Dollars (last 7 days)
+            raw_cost_daily = await self.hass.async_add_executor_job(
                 self._client.get_water_usage,
                 self._account_number,
                 self._meter_number,
                 "D",
                 USAGE_TYPE_DOLLARS,
-                from_date,
-                to_date,
+                daily_from,
+                daily_to,
+            )
+
+            # Fetch hourly flow data in Gallons (last 24 hours)
+            raw_gallons_hourly = await self.hass.async_add_executor_job(
+                self._client.get_water_usage,
+                self._account_number,
+                self._meter_number,
+                "H",
+                USAGE_TYPE_GALLONS,
+                hourly_from,
+                hourly_to,
+            )
+
+            # Fetch hourly flow data in CCF (last 24 hours)
+            raw_ccf_hourly = await self.hass.async_add_executor_job(
+                self._client.get_water_usage,
+                self._account_number,
+                self._meter_number,
+                "H",
+                USAGE_TYPE_CCF,
+                hourly_from,
+                hourly_to,
             )
 
             # Fetch comparison data (Gallons)
@@ -112,11 +137,13 @@ class AquaTraxCoordinator(DataUpdateCoordinator[AquaTraxData]):
             )
 
             return {
-                "gallons": self._client._parse_usage_table(raw_gallons),
-                "ccf": self._client._parse_usage_table(raw_ccf),
-                "cost": self._client._parse_usage_table(raw_cost),
+                "gallons": self._client._parse_usage_table(raw_gallons_daily),
+                "ccf": self._client._parse_usage_table(raw_ccf_daily),
+                "cost": self._client._parse_usage_table(raw_cost_daily),
+                "hourly_gallons": self._client._parse_usage_table(raw_gallons_hourly),
+                "hourly_ccf": self._client._parse_usage_table(raw_ccf_hourly),
                 "compare": raw_compare,
-                "unit_types": self._client.get_unit_types(raw_gallons),
+                "unit_types": self._client.get_unit_types(raw_gallons_daily),
                 "last_update": datetime.now().isoformat(),
             }
 

@@ -52,6 +52,12 @@ COMPARE_KEYS = [
     ("compare_zip", "Comparison Zip Average", SensorStateClass.MEASUREMENT),
 ]
 
+# Flow rate sensors (per-hour usage, interpreting hourly TotalValue as flow)
+FLOW_KEYS = [
+    ("current_hour_flow", "Current Hour Flow", SensorStateClass.MEASUREMENT),
+    ("peak_flow_today", "Peak Flow Today", SensorStateClass.MEASUREMENT),
+]
+
 
 def _build_descriptions() -> tuple[SensorEntityDescription, ...]:
     """Build all sensor descriptions."""
@@ -101,6 +107,21 @@ def _build_descriptions() -> tuple[SensorEntityDescription, ...]:
             )
         )
 
+    # Flow rate sensors (per-unit-type)
+    for usage_type, label in (
+        (USAGE_TYPE_GALLONS, "Gallons"),
+        (USAGE_TYPE_CCF, "CCF"),
+    ):
+        for key, name, state_class in FLOW_KEYS:
+            descriptions.append(
+                SensorEntityDescription(
+                    key=f"{usage_type}_flow_{key}",
+                    name=f"{name} ({label}/h)",
+                    state_class=state_class,
+                    device_class=SensorDeviceClass.WATER,
+                )
+            )
+
     return tuple(descriptions)
 
 
@@ -118,6 +139,10 @@ def _get_unit(key: str) -> str:
 
 
 def _data_key(key: str) -> str:
+    if "flow_" in key:
+        if key.startswith(USAGE_TYPE_GALLONS):
+            return "hourly_gallons"
+        return "hourly_ccf"
     if key.startswith(USAGE_TYPE_GALLONS):
         return "gallons"
     if key.startswith(USAGE_TYPE_CCF):
@@ -130,7 +155,13 @@ def _data_key(key: str) -> str:
 
 
 def _reading_key(key: str) -> str:
-    for prefix in (f"{USAGE_TYPE_GALLONS}_", f"{USAGE_TYPE_CCF}_", f"{USAGE_TYPE_DOLLARS}_"):
+    for prefix in (
+        f"{USAGE_TYPE_GALLONS}_flow_",
+        f"{USAGE_TYPE_CCF}_flow_",
+        f"{USAGE_TYPE_GALLONS}_",
+        f"{USAGE_TYPE_CCF}_",
+        f"{USAGE_TYPE_DOLLARS}_",
+    ):
         if key.startswith(prefix):
             return key[len(prefix):]
     if key.startswith("compare_"):
@@ -222,6 +253,20 @@ class AquaTraxSensorEntity(CoordinatorEntity[AquaTraxCoordinator], SensorEntity)
         if not readings:
             return None
 
+        # Flow rate sensors (from hourly data)
+        if rkey == "current_hour_flow":
+            # The most recent hourly reading = current flow
+            for reading in reversed(readings):
+                if reading.total_value is not None:
+                    return reading.total_value
+            return None
+        if rkey == "peak_flow_today":
+            # Max of all hourly readings in the last 24 hours
+            try:
+                return max(r.total_value for r in readings if r.total_value is not None)
+            except ValueError:
+                return None
+
         field = {
             "billing_period_total": "current_usage",
             "billing_period_cost": "current_usage",
@@ -275,7 +320,15 @@ class AquaTraxSensorEntity(CoordinatorEntity[AquaTraxCoordinator], SensorEntity)
             return {}
 
         latest = readings[-1]
-        return {
+        attrs = {
             "usage_date": latest.usage_date,
             "last_update": self.coordinator.data.get("last_update"),
         }
+        rkey = _reading_key(key)
+        if rkey in ("current_hour_flow", "peak_flow_today"):
+            attrs["hour"] = latest.hourly
+            if rkey == "peak_flow_today":
+                peak_reading = max(readings, key=lambda r: r.total_value)
+                attrs["peak_hour"] = f"{peak_reading.usage_date} {peak_reading.hourly}"
+                attrs["peak_value"] = peak_reading.total_value
+        return attrs
