@@ -96,10 +96,34 @@ Any water district that uses the MyAquaTrax portal:
 
 To track water usage in the Energy Dashboard:
 
+### Step 1: Add the Water Source
+
 1. Go to **Settings → Devices & Services → Energy**
 2. Click **Add water source**
-3. Select `sensor.g_billing_period_total` (Gallons) or `sensor.w_billing_period_total` (CCF)
-4. To add cost tracking, use `sensor.d_billing_period_cost` with `device_class=MONETARY`
+3. Select one of these sensors:
+
+| Sensor | Unit | When to use |
+|--------|------|-------------|
+| `sensor.g_billing_period_total` | Gallons | Best if your water bill is in gallons |
+| `sensor.w_billing_period_total` | CCF | Best if your water bill is in hundred cubic feet |
+
+### Step 2: Add Cost Tracking
+
+1. In the Energy Dashboard, under your water source, click **Add cost**
+2. Select `sensor.d_billing_period_cost`
+
+### Optional: Flow Rate Monitoring
+
+Add these sensors to your main dashboard for a near-real-time view:
+
+| Sensor | Unit | Description |
+|--------|------|-------------|
+| `sensor.g_flow_current_hour_flow` | gal/h | Current hour's water flow rate |
+| `sensor.g_flow_peak_flow_today` | gal/h | Highest hour flow today |
+| `sensor.w_flow_current_hour_flow` | ccf/h | Current hour's flow in CCF |
+| `sensor.w_flow_peak_flow_today` | ccf/h | Peak flow in CCF |
+
+> **Note:** Flow rate is synthesized from hourly usage data (each hour's TotalValue). The actual meter does not provide a live flow rate.
 
 ## API Endpoints
 

@@ -33,9 +33,9 @@ type AquaTraxConfigEntry = ConfigEntry[AquaTraxCoordinator]
 WATER_KEYS = [
     ("billing_period_total", "Billing Period Total", SensorStateClass.TOTAL_INCREASING),
     ("daily_usage", "Daily Usage", SensorStateClass.TOTAL_INCREASING),
-    ("average", "Average", SensorStateClass.MEASUREMENT),
-    ("highest", "Highest", SensorStateClass.MEASUREMENT),
-    ("lowest", "Lowest", SensorStateClass.MEASUREMENT),
+    ("average", "Average", None),
+    ("highest", "Highest", None),
+    ("lowest", "Lowest", None),
 ]
 
 # Cost sensors (Dollars)
@@ -46,16 +46,16 @@ COST_KEYS = [
 
 # Comparison sensors (Gallons)
 COMPARE_KEYS = [
-    ("compare_current", "Comparison Current Month", SensorStateClass.MEASUREMENT),
-    ("compare_previous", "Comparison Previous Year", SensorStateClass.MEASUREMENT),
-    ("compare_utility", "Comparison Utility Average", SensorStateClass.MEASUREMENT),
-    ("compare_zip", "Comparison Zip Average", SensorStateClass.MEASUREMENT),
+    ("compare_current", "Comparison Current Month", None),
+    ("compare_previous", "Comparison Previous Year", None),
+    ("compare_utility", "Comparison Utility Average", None),
+    ("compare_zip", "Comparison Zip Average", None),
 ]
 
 # Flow rate sensors (per-hour usage, interpreting hourly TotalValue as flow)
 FLOW_KEYS = [
-    ("current_hour_flow", "Current Hour Flow", SensorStateClass.MEASUREMENT),
-    ("peak_flow_today", "Peak Flow Today", SensorStateClass.MEASUREMENT),
+    ("current_hour_flow", "Current Hour Flow", None),
+    ("peak_flow_today", "Peak Flow Today", None),
 ]
 
 
