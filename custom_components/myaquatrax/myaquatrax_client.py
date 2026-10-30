@@ -107,7 +107,7 @@ class AquaTraxClient:
                 Utility(
                     utility_id=row["UtilityId"],
                     name=row["Name"],
-                    sso_enabled=row.get("ssoenable", "0") == "1",
+                    sso_enabled=str(row.get("ssoenable", "0")) == "1",
                     invoice_cloud_status=row.get("InvoiceCoudstatus", 0),
                     is_registration=row.get("IsRegistration", False) is True,
                     payment_location=row.get("Paymentlocation") or None,
