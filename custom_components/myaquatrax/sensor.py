@@ -54,8 +54,8 @@ COMPARE_KEYS = [
 
 # Flow rate sensors (per-hour usage, interpreting hourly TotalValue as flow)
 FLOW_KEYS = [
-    ("current_hour_flow", "Current Hour Flow", None),
-    ("peak_flow_today", "Peak Flow Today", None),
+    ("current_hour_flow", "Current Hour Flow"),
+    ("peak_flow_today", "Peak Flow Today"),
 ]
 
 
@@ -107,21 +107,19 @@ def _build_descriptions() -> tuple[SensorEntityDescription, ...]:
             )
         )
 
-    # Flow rate sensors (per-unit-type) — use VOLUME_FLOW_RATE device class
-    # so they show up in the Energy Dashboard flow picker
-    for usage_type, label in (
-        (USAGE_TYPE_GALLONS, "Gallons"),
-        (USAGE_TYPE_CCF, "CCF"),
-    ):
-        for key, name, state_class in FLOW_KEYS:
-            descriptions.append(
-                SensorEntityDescription(
-                    key=f"{usage_type}_flow_{key}",
-                    name=f"{name} ({label}/h)",
-                    state_class=state_class,
-                    device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
-                )
+    # Flow rate sensors (per-hour readings converted to per-minute rate)
+    # Only Gallons—the CCF hourly data is in CCF units (not ft³/h) so it
+    # doesn't translate cleanly to flow rate. Gal/min is the only unit that
+    # makes sense for the API data shape.
+    for key, name in FLOW_KEYS:
+        descriptions.append(
+            SensorEntityDescription(
+                key=f"{USAGE_TYPE_GALLONS}_flow_{key}",
+                name=f"{name} (gal/min)",
+                state_class=SensorStateClass.MEASUREMENT,
+                device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
             )
+        )
 
     return tuple(descriptions)
 
@@ -130,14 +128,8 @@ SENSOR_DESCRIPTIONS = _build_descriptions()
 
 
 def _get_unit(key: str) -> str:
-    # Flow rate sensors need flow-rate units
     if "flow_" in key:
-        if key.startswith(USAGE_TYPE_GALLONS):
-            return "gal/h"
-        if key.startswith(USAGE_TYPE_CCF):
-            # hcf is not a valid HA flow rate unit; convert to ft³/h
-            return "ft³/h"
-        return "gal/h"
+        return "gal/min"
     if key.startswith(USAGE_TYPE_GALLONS) or key.startswith("compare_"):
         return UnitOfVolume.GALLONS
     if key.startswith(USAGE_TYPE_CCF):
@@ -149,9 +141,7 @@ def _get_unit(key: str) -> str:
 
 def _data_key(key: str) -> str:
     if "flow_" in key:
-        if key.startswith(USAGE_TYPE_GALLONS):
-            return "hourly_gallons"
-        return "hourly_ccf"
+        return "hourly_gallons"
     if key.startswith(USAGE_TYPE_GALLONS):
         return "gallons"
     if key.startswith(USAGE_TYPE_CCF):
@@ -164,9 +154,10 @@ def _data_key(key: str) -> str:
 
 
 def _reading_key(key: str) -> str:
+    # Strip the longest prefix first so that e.g. "G_flow_current_hour_flow"
+    # becomes "current_hour_flow", not "flow_current_hour_flow"
     for prefix in (
         f"{USAGE_TYPE_GALLONS}_flow_",
-        f"{USAGE_TYPE_CCF}_flow_",
         f"{USAGE_TYPE_GALLONS}_",
         f"{USAGE_TYPE_CCF}_",
         f"{USAGE_TYPE_DOLLARS}_",
@@ -262,21 +253,16 @@ class AquaTraxSensorEntity(CoordinatorEntity[AquaTraxCoordinator], SensorEntity)
         if not readings:
             return None
 
-        # Flow rate sensors (from hourly data)
-        # CCF->ft³ conversion: 1 CCF = 100 ft³
+        # Flow rate sensors: hourly reading (gallons per hour) → per-minute rate
         if rkey == "current_hour_flow":
             for reading in reversed(readings):
                 if reading.total_value is not None:
-                    if data_key == "hourly_ccf":
-                        return reading.total_value * 100
-                    return reading.total_value
+                    return reading.total_value / 60
             return None
         if rkey == "peak_flow_today":
             try:
                 peak = max(r.total_value for r in readings if r.total_value is not None)
-                if data_key == "hourly_ccf":
-                    return peak * 100
-                return peak
+                return peak / 60
             except ValueError:
                 return None
 
