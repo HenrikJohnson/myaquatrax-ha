@@ -114,16 +114,16 @@ To track water usage in the Energy Dashboard:
 
 ### Optional: Flow Rate Monitoring
 
-Add these sensors to your main dashboard for a near-real-time view:
+Add these sensors to your main dashboard for a near-real-time view. These appear in the **Flow Rate** sensor picker in the Energy Dashboard:
 
-| Sensor | Unit | Description |
-|--------|------|-------------|
-| `sensor.g_flow_current_hour_flow` | gal/h | Current hour's water flow rate |
-| `sensor.g_flow_peak_flow_today` | gal/h | Highest hour flow today |
-| `sensor.w_flow_current_hour_flow` | ccf/h | Current hour's flow in CCF |
-| `sensor.w_flow_peak_flow_today` | ccf/h | Peak flow in CCF |
+| Sensor | Unit | HA Picker | Description |
+|--------|------|-----------|-------------|
+| `sensor.g_flow_current_hour_flow` | gal/h | ✅ | Current hour's water flow rate |
+| `sensor.g_flow_peak_flow_today` | gal/h | ✅ | Highest hour flow today |
+| `sensor.w_flow_current_hour_flow` | ft³/h | ✅ | Current hour's flow in cubic feet (converted from CCF) |
+| `sensor.w_flow_peak_flow_today` | ft³/h | ✅ | Peak flow in cubic feet (converted from CCF) |
 
-> **Note:** Flow rate is synthesized from hourly usage data (each hour's TotalValue). The actual meter does not provide a live flow rate.
+> **Note:** Flow rate is synthesized from hourly usage data (each hour's TotalValue). The actual meter does not provide a live flow rate. CCF flow values are converted from hundred-cubic-feet to cubic feet (1 CCF = 100 ft³).
 
 ## API Endpoints
 

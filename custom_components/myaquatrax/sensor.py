@@ -107,7 +107,8 @@ def _build_descriptions() -> tuple[SensorEntityDescription, ...]:
             )
         )
 
-    # Flow rate sensors (per-unit-type)
+    # Flow rate sensors (per-unit-type) — use VOLUME_FLOW_RATE device class
+    # so they show up in the Energy Dashboard flow picker
     for usage_type, label in (
         (USAGE_TYPE_GALLONS, "Gallons"),
         (USAGE_TYPE_CCF, "CCF"),
@@ -118,7 +119,7 @@ def _build_descriptions() -> tuple[SensorEntityDescription, ...]:
                     key=f"{usage_type}_flow_{key}",
                     name=f"{name} ({label}/h)",
                     state_class=state_class,
-                    device_class=SensorDeviceClass.WATER,
+                    device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
                 )
             )
 
@@ -134,7 +135,8 @@ def _get_unit(key: str) -> str:
         if key.startswith(USAGE_TYPE_GALLONS):
             return "gal/h"
         if key.startswith(USAGE_TYPE_CCF):
-            return "hcf/h"
+            # hcf is not a valid HA flow rate unit; convert to ft³/h
+            return "ft³/h"
         return "gal/h"
     if key.startswith(USAGE_TYPE_GALLONS) or key.startswith("compare_"):
         return UnitOfVolume.GALLONS
@@ -261,16 +263,20 @@ class AquaTraxSensorEntity(CoordinatorEntity[AquaTraxCoordinator], SensorEntity)
             return None
 
         # Flow rate sensors (from hourly data)
+        # CCF->ft³ conversion: 1 CCF = 100 ft³
         if rkey == "current_hour_flow":
-            # The most recent hourly reading = current flow
             for reading in reversed(readings):
                 if reading.total_value is not None:
+                    if data_key == "hourly_ccf":
+                        return reading.total_value * 100
                     return reading.total_value
             return None
         if rkey == "peak_flow_today":
-            # Max of all hourly readings in the last 24 hours
             try:
-                return max(r.total_value for r in readings if r.total_value is not None)
+                peak = max(r.total_value for r in readings if r.total_value is not None)
+                if data_key == "hourly_ccf":
+                    return peak * 100
+                return peak
             except ValueError:
                 return None
 
