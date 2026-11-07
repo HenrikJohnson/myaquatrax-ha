@@ -112,7 +112,13 @@ class AquaTraxConfigFlow(ConfigFlow, domain=DOMAIN):
                 return self.async_abort(reason="cannot_connect")
 
             self._utilities = {
-                f"{u.utility_id} - {u.name}": (u.utility_id, u.sso_enabled, u.name)
+                # Same rule as the portal's login page: a utility that allows
+                # registration uses email + password even when SSO is enabled.
+                f"{u.utility_id} - {u.name}": (
+                    u.utility_id,
+                    u.sso_enabled and not u.is_registration,
+                    u.name,
+                )
                 for u in utilities
             }
 

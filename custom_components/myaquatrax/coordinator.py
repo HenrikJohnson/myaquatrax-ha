@@ -40,6 +40,7 @@ class AquaTraxCoordinator(DataUpdateCoordinator[AquaTraxData]):
         self._account_number = config[CONF_ACCOUNT_NUMBER]
         self._meter_number = config[CONF_METER_NUMBER]
         self._email = config[CONF_EMAIL]
+        self._bimonthly: bool | None = None  # Non-AMI meter; detected on first update
 
         super().__init__(
             hass,
@@ -67,6 +68,18 @@ class AquaTraxCoordinator(DataUpdateCoordinator[AquaTraxData]):
                     self._email,
                     self._config[CONF_PASSWORD],
                 )
+
+            if self._bimonthly is None:
+                hourly_meters = await self.hass.async_add_executor_job(
+                    self._client.get_meter_details,
+                    self._utility_id,
+                    self._account_number,
+                    "H",
+                )
+                self._bimonthly = not hourly_meters
+
+            if self._bimonthly:
+                return await self._async_fetch_bimonthly()
 
             end = datetime.now()
             daily_start = end - timedelta(days=7)
@@ -152,3 +165,22 @@ class AquaTraxCoordinator(DataUpdateCoordinator[AquaTraxData]):
         except Exception as exc:
             _LOGGER.exception("Unexpected error fetching MyAquaTrax data")
             raise UpdateFailed(f"Error fetching data: {exc}") from exc
+
+    async def _async_fetch_bimonthly(self) -> AquaTraxData:
+        """Fetch usage for a non-AMI meter, which only has bi-monthly readings."""
+        readings = {}
+        for key, usage_type in (("gallons", USAGE_TYPE_GALLONS), ("ccf", USAGE_TYPE_CCF)):
+            raw = await self.hass.async_add_executor_job(
+                self._client.get_water_usage,
+                self._account_number,
+                self._meter_number,
+                "B",
+                usage_type,
+            )
+            readings[key] = self._client._parse_usage_table(raw)
+
+        return {
+            **readings,
+            "bimonthly": True,
+            "last_update": datetime.now().isoformat(),
+        }
