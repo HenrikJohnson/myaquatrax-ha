@@ -152,7 +152,7 @@ def _get_unit(key: str) -> str:
     if key.startswith(USAGE_TYPE_GALLONS) or key.startswith("compare_"):
         return UnitOfVolume.GALLONS
     if key.startswith(USAGE_TYPE_CCF):
-        return "hcf"
+        return UnitOfVolume.CENTUM_CUBIC_FEET
     if key.startswith(USAGE_TYPE_DOLLARS):
         return "USD"
     return UnitOfVolume.GALLONS
