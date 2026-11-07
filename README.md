@@ -92,6 +92,19 @@ Any water district that uses the MyAquaTrax portal:
 | `sensor.compare_utility` | Current month vs. utility average |
 | `sensor.compare_zip` | Current month vs. zip code average |
 
+### Bi-monthly (meters without hourly data)
+
+Meters that aren't smart (AMI) meters only report bi-monthly readings, so they get these sensors instead of all the sensors above, in both Gallons and CCF:
+
+| Sensor | Description |
+|--------|-------------|
+| Latest Bi-monthly Usage | Usage in the most recent bi-monthly reading |
+| Bi-monthly Average | Average bi-monthly usage |
+| Bi-monthly Highest | Highest bi-monthly usage |
+| Bi-monthly Lowest | Lowest bi-monthly usage |
+
+These sensors don't record long-term statistics, so they can't be used in the Energy Dashboard.
+
 ## Energy Dashboard
 
 To track water usage in the Energy Dashboard:

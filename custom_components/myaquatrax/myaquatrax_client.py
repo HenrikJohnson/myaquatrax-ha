@@ -27,6 +27,7 @@ class Utility:
     is_registration: bool
     payment_location: str | None = None
     logo: str | None = None
+    mfa_enabled: bool = False
 
 
 @dataclass
@@ -61,6 +62,7 @@ class UsageReading:
     highest: float | None
     lowest: float | None
     current_usage: float | None
+    month: int | None = None
 
 
 def to_float(value: Any) -> float | None:
@@ -125,6 +127,7 @@ class AquaTraxClient:
                     is_registration=row.get("IsRegistration", False) is True,
                     payment_location=row.get("Paymentlocation") or None,
                     logo=row.get("UtilityLogo") or None,
+                    mfa_enabled=row.get("MFAEnabled", False) is True,
                 )
             )
         return utilities
@@ -135,14 +138,20 @@ class AquaTraxClient:
         Returns True on success, raises on failure.
         """
         token = self._fetch_login_token()
+        utility = next(
+            (u for u in self.get_utilities() if u.utility_id == utility_id), None
+        )
+        if utility is None:
+            raise AquaTraxError(f"Unknown utility {utility_id}")
 
+        # The same hidden field values the portal's login page sets for this utility
         form_data = {
             "__RequestVerificationToken": token,
-            "Mfe": "False",
+            "Mfe": str(utility.mfa_enabled),
             "utilityId": str(utility_id),
-            "InvoiceCoudstatus": "",
-            "IsRegistration": "False",
-            "IsSSOEnabled": "0",
+            "InvoiceCoudstatus": str(utility.invoice_cloud_status),
+            "IsRegistration": str(utility.is_registration).lower(),
+            "IsSSOEnabled": "1" if utility.sso_enabled else "0",
             "UserName": username,
             "Password": password,
             "RememberMe": "true",
@@ -243,8 +252,12 @@ class AquaTraxClient:
         return self._parse_meters(data, account_number)
 
     def get_usage_meters(self, utility_id: int, account_number: str) -> list[Meter]:
-        """Fetch the utility meter numbers used by GetWaterUsage."""
-        return self.get_meter_details(utility_id, account_number, mode="H")
+        """Fetch the utility meter numbers used by GetWaterUsage.
+
+        Non-AMI meters have no hourly data and are only listed with an empty mode.
+        """
+        meters = self.get_meter_details(utility_id, account_number, mode="H")
+        return meters or self.get_raw_meters(utility_id, account_number)
 
     def get_raw_meters(self, utility_id: int, account_number: str) -> list[Meter]:
         """Fetch raw AMI meter serial numbers."""
@@ -480,6 +493,7 @@ class AquaTraxClient:
                     highest=to_float(row.get("HIGHEST")),
                     lowest=to_float(row.get("LOWEST")),
                     current_usage=to_float(row.get("CurrentUsage")),
+                    month=row.get("MonthUsageDate"),
                 )
             )
         return readings

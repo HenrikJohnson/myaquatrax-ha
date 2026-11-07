@@ -59,6 +59,15 @@ FLOW_KEYS = [
 ]
 
 
+# Non-AMI meters only report bi-monthly readings, so these replace all other sensors
+BIMONTHLY_KEYS = [
+    ("bimonthly_usage", "Latest Bi-monthly Usage"),
+    ("average", "Bi-monthly Average"),
+    ("highest", "Bi-monthly Highest"),
+    ("lowest", "Bi-monthly Lowest"),
+]
+
+
 def _build_descriptions() -> tuple[SensorEntityDescription, ...]:
     """Build all sensor descriptions."""
     descriptions: list[SensorEntityDescription] = []
@@ -126,6 +135,16 @@ def _build_descriptions() -> tuple[SensorEntityDescription, ...]:
 
 SENSOR_DESCRIPTIONS = _build_descriptions()
 
+BIMONTHLY_DESCRIPTIONS = tuple(
+    SensorEntityDescription(
+        key=f"{usage_type}_{key}",
+        name=f"{name} ({label})",
+        device_class=SensorDeviceClass.WATER,
+    )
+    for usage_type, label in ((USAGE_TYPE_GALLONS, "Gallons"), (USAGE_TYPE_CCF, "CCF"))
+    for key, name in BIMONTHLY_KEYS
+)
+
 
 def _get_unit(key: str) -> str:
     if "flow_" in key:
@@ -133,7 +152,7 @@ def _get_unit(key: str) -> str:
     if key.startswith(USAGE_TYPE_GALLONS) or key.startswith("compare_"):
         return UnitOfVolume.GALLONS
     if key.startswith(USAGE_TYPE_CCF):
-        return "hcf"
+        return UnitOfVolume.CENTUM_CUBIC_FEET
     if key.startswith(USAGE_TYPE_DOLLARS):
         return "USD"
     return UnitOfVolume.GALLONS
@@ -189,8 +208,14 @@ async def async_setup_entry(
     """Set up MyAquaTrax sensor entities."""
     coordinator = entry.runtime_data
 
+    descriptions = (
+        BIMONTHLY_DESCRIPTIONS
+        if coordinator.data.get("bimonthly")
+        else SENSOR_DESCRIPTIONS
+    )
+
     entities: list[SensorEntity] = []
-    for description in SENSOR_DESCRIPTIONS:
+    for description in descriptions:
         entities.append(
             AquaTraxSensorEntity(coordinator, description, _get_unit(description.key))
         )
@@ -267,6 +292,7 @@ class AquaTraxSensorEntity(CoordinatorEntity[AquaTraxCoordinator], SensorEntity)
                 return None
 
         field = {
+            "bimonthly_usage": "total_value",
             "billing_period_total": "current_usage",
             "billing_period_cost": "current_usage",
             "daily_usage": "total_value",
@@ -323,6 +349,8 @@ class AquaTraxSensorEntity(CoordinatorEntity[AquaTraxCoordinator], SensorEntity)
             "usage_date": latest.usage_date,
             "last_update": self.coordinator.data.get("last_update"),
         }
+        if latest.month is not None:
+            attrs["usage_month"] = latest.month
         rkey = _reading_key(key)
         if rkey in ("current_hour_flow", "peak_flow_today"):
             attrs["hour"] = latest.hourly
